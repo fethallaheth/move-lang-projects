@@ -1,6 +1,6 @@
 module chaos::MessageDemo {
+
     use aptos_framework::event;
-    use aptos_framework::account;
 
     use std::string::{String, Self, utf8};
     use std::debug::print;
@@ -32,7 +32,7 @@ module chaos::MessageDemo {
         isDeleted: bool
     }
 
-    ////////////////////////////////////////////////////////////////////////////////////            FUNCTION           ////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////   FUNCTION   ////////////////////////////////////////////////////////////////////////////////////////
 
     public entry fun create_message(account: &signer, msg: String) {
         let signer_address = signer::address_of(account);
@@ -70,7 +70,7 @@ module chaos::MessageDemo {
         assert!(exists<Message>(signer::address_of(account)) == true, 2);
 
         let message = move_from<Message>(signer::address_of(account));
-        let Message { my_message } = message;
+        let Message { my_message : _ } = message;
         print(&utf8(b"Message deleted successfully"));
 
         let delete_message_event = MessageDeletedEvent {
@@ -92,9 +92,12 @@ module chaos::MessageDemo {
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     /////////////////////////////////////////////////////////////////////////////////////      UNIT TEST      /////////////////////////////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+     
+    #[test_only]
+    use aptos_framework::account;
 
     #[test(admin = @0x123)]
-    public entry fun test_create_msg(admin: signer) acquires Message {
+    fun test_create_msg(admin: signer) acquires Message {
         account::create_account_for_test(signer::address_of(&admin));
         create_message(&admin, string::utf8(b"This is my message"));
         let msg = read_message(signer::address_of(&admin));
@@ -104,14 +107,14 @@ module chaos::MessageDemo {
 
     #[test(admin = @0123)]
     #[expected_failure(abort_code = ALREADY_EXISTS)]
-    public entry fun test_create_msg_already_exists(admin: signer) {
+    fun test_create_msg_already_exists(admin: signer) {
         account::create_account_for_test(signer::address_of(&admin));
         create_message(&admin, string::utf8(b"This is my message"));
         create_message(&admin, string::utf8(b"This is my 2nd message"));
     }
 
     #[test(admin = @0x123)]
-    public entry fun test_edit_msg(admin: signer) acquires Message {
+    fun test_edit_msg(admin: signer) acquires Message {
         account::create_account_for_test(signer::address_of(&admin));
         create_message(&admin, string::utf8(b"This is my message"));
         let msg = read_message(signer::address_of(&admin));
@@ -125,7 +128,7 @@ module chaos::MessageDemo {
 
     #[test(admin = @0x123)]
     #[expected_failure(abort_code = NOT_EXISTS)]
-    public entry fun test_edit_msg_not_exist_resource(admin: signer) acquires Message {
+    fun test_edit_msg_not_exist_resource(admin: signer) acquires Message {
         account::create_account_for_test(signer::address_of(&admin));
         edit_message(&admin, string::utf8(b"This is an updated message"));
         let updated_msg = read_message(signer::address_of(&admin));
@@ -134,7 +137,7 @@ module chaos::MessageDemo {
     }
 
     #[test(admin = @0x123)]
-    public entry fun test_delete_msg(admin: signer) acquires Message {
+    fun test_delete_msg(admin: signer) acquires Message {
         account::create_account_for_test(signer::address_of(&admin));
         create_message(&admin, string::utf8(b"This is my message"));
         let msg = read_message(signer::address_of(&admin));
@@ -145,7 +148,7 @@ module chaos::MessageDemo {
 
     #[test(admin = @0x123)]
     #[expected_failure(abort_code = NOT_EXISTS)]
-    public entry fun test_delete_msg_doesnt_exist(admin: signer) acquires Message {
+    fun test_delete_msg_doesnt_exist(admin: signer) acquires Message {
         account::create_account_for_test(signer::address_of(&admin));
         delete_message(&admin);
     }
