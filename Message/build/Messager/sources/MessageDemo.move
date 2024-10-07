@@ -1,53 +1,86 @@
 module chaos::MessageDemo {
     use std::string::{String,Self, utf8};
     use std::signer;
+    use aptos_framework::event;
     use aptos_framework::account;
     use std::debug::print;
+    
+    const ALREADY_EXISTS : u64 = 1;
+    const NOT_EXISTS: u64 = 2;
 
-    struct Message has key
-    {
+    struct Message has key  {
         my_message : String
     }
 
-    const ALREADY_EXISTS : u64 = 1;
-    const NOT_EXISTS: u64 = 2;
-    const BULLSHIT: u64 = 23;
+    // --- events ---
+    #[event]
+    struct MessageCreatedEvent has drop, store {
+        account: address,
+        message: string::String,
+    }
 
+     #[event]
+    struct MessageEditedEvent has drop, store {
+        account: address,
+        message: string::String,
+    }
+
+     #[event]
+    struct MessageDeletedEvent has drop, store {
+        account: address,
+        isDeleted: bool,
+    }
 
     public entry fun create_message(account: &signer, msg: String) {
         let signer_address = signer::address_of(account);
         
-        if(!exists<Message>(signer_address))  //If the resource does not exits corresponding to a given address
+        if(!exists<Message>(signer_address))  
         {
             let message = Message {
-                my_message : msg             //first create a resouce
+                my_message : msg          
             };
-            move_to(account,message);        //move that resouce to the account
+            move_to(account,message);        
         }
 
-        else                                 //If the resource exits corresponding to a given address
-        {
-            abort ALREADY_EXISTS                             //update the resouce
-        }
+        else { abort ALREADY_EXISTS };
+
+        let create_message_event = MessageCreatedEvent {
+            account: signer_address,
+            message:msg,
+        };
+        event::emit(create_message_event);
         
     }
 
-    public entry fun edite_message(account: &signer, msg: String) acquires Message {
+    public  fun edit_message(account: &signer, msg: String) acquires Message {
         assert!(exists<Message>(signer::address_of(account)) == true, 2);
 
         let message=  borrow_global_mut<Message>(signer::address_of(account));
         message.my_message = msg;
+
+         let edit_message_event = MessageEditedEvent {
+            account: signer::address_of(account),
+            message:msg,
+        };
+        event::emit(edit_message_event);
     }
 
-    public entry fun delete_message(account: &signer) acquires Message {
+    public  fun delete_message(account: &signer) acquires Message {
         assert!(exists<Message>(signer::address_of(account)) == true, 2);
         
         let message = move_from<Message>(signer::address_of(account));
         let Message {my_message} = message;
         print(&utf8(b"Message deleted successfully"));
 
+         let delete_message_event = MessageDeletedEvent {
+            account: signer::address_of(account),
+            isDeleted: true,
+        };
+        event::emit(delete_message_event);
+
     }
     
+    #[view]
     public fun read_message(account: address): String acquires Message {
         let message = borrow_global<Message>(account);
         message.my_message
@@ -82,7 +115,7 @@ module chaos::MessageDemo {
         let msg = read_message(signer::address_of(&admin));
         print(&msg);
         print(&utf8(b"Message created successfully"));
-        edite_message(&admin, string::utf8(b"This is an updated message"));
+        edit_message(&admin, string::utf8(b"This is an updated message"));
         let updated_msg = read_message(signer::address_of(&admin));
         print(&updated_msg);
         print(&utf8(b"Message updated successfully"));
@@ -93,7 +126,7 @@ module chaos::MessageDemo {
     public entry fun test_edit_msg_not_exist_resource(admin: signer) acquires Message
     {
         account::create_account_for_test(signer::address_of(&admin));
-        edite_message(&admin, string::utf8(b"This is an updated message"));
+        edit_message(&admin, string::utf8(b"This is an updated message"));
         let updated_msg = read_message(signer::address_of(&admin));
         print(&updated_msg);
         print(&utf8(b"Message updated successfully"));
